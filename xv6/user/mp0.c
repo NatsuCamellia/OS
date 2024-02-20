@@ -10,6 +10,9 @@ typedef struct fileCount {
     int file_num;
 } FileCount;
 
+/**
+ * Count the number of occurrences of key in path.
+*/
 int count_key_occurrence(char *path, char key) {
     int n = strlen(path);
     int occurrence = 0;
@@ -19,6 +22,10 @@ int count_key_occurrence(char *path, char key) {
     return occurrence;
 }
 
+/**
+ * Print occurrences of key in path, update file_count.
+ * This function executes recursively. 
+*/
 void traverse(char *path, FileCount *file_count, char key) {
     char buf[BUF_SIZE], *p;
     int fd;
@@ -70,6 +77,10 @@ void traverse(char *path, FileCount *file_count, char key) {
     close(fd);
 }
 
+/**
+ * Counts the number of occurrences of the given key in each file or directory under (direct and indirect) the given path.
+ * Counts the number of files and directories under the given path.
+*/
 void mp0(char *path, char key) {
     int fd[2];
     pipe(fd);
