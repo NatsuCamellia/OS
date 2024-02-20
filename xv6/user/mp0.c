@@ -27,7 +27,6 @@ void traverse(char *path, FileCount *file_count, char key) {
 
     if((fd = open(path, 0)) < 0){
         fprintf(2, "%s [error opening dir]\n", path);
-        close(fd);
         return;
     }
 
