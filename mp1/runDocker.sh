@@ -1,0 +1,1 @@
+docker run -itd --name os_mp1 -v $(pwd)/xv6:/home ntuos/mp1
