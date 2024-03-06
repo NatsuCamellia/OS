@@ -45,6 +45,7 @@ void thread_yield(void) {
     // TODO
     // Save context
     if (setjmp(current_thread->env) == 0) {
+        schedule();
         longjmp(env_st, 1);
     }
 }
@@ -56,9 +57,7 @@ void dispatch(void) {
         current_thread->env->ra = (unsigned long)(current_thread->fp);
         current_thread->buf_set = 1;
     }
-    if (setjmp(env_st) == 0) {
-        longjmp(current_thread->env, 1);
-    }
+    longjmp(current_thread->env, 1);
 }
 void schedule(void) {
     // TODO
@@ -75,7 +74,7 @@ void thread_exit(void) {
         free(current_thread->stack);
         free(current_thread);
 
-        current_thread = prev_thread;
+        current_thread = next_thread;
     } else {
         // TODO
         // Hint: No more thread to execute
@@ -87,9 +86,8 @@ void thread_exit(void) {
 }
 void thread_start_threading(void) {
     // TODO
-    current_thread = current_thread->previous;
-    while (current_thread != NULL) {
-        schedule();
+    setjmp(env_st);
+    if (current_thread) {
         dispatch();
     }
 }
