@@ -10,6 +10,14 @@ static int id = 1;
 static jmp_buf env_st;
 // static jmp_buf env_tmp;
 
+struct task *task_create(struct thread *thread, void (*f)(void *), void *arg) {
+    struct task *t = (struct task *)malloc(sizeof(struct task));
+    t->fp = f;
+    t->arg = arg;
+    t->id = (thread->task_id_provider)++;
+    return t;
+}
+
 struct thread *thread_create(void (*f)(void *), void *arg) {
     struct thread *t = (struct thread *)malloc(sizeof(struct thread));
     unsigned long new_stack_p;
@@ -19,9 +27,11 @@ struct thread *thread_create(void (*f)(void *), void *arg) {
     t->fp = f;
     t->arg = arg;
     t->ID = id;
+    t->task_id_provider = 0;
     t->buf_set = 0;
     t->stack = (void *)new_stack;
     t->stack_p = (void *)new_stack_p;
+    thread_assign_task(t, f, arg);
     id++;
     return t;
 }
@@ -43,18 +53,25 @@ void thread_add_runqueue(struct thread *t) {
 }
 void thread_yield(void) {
     // TODO
+    struct task *task = current_thread->current_task;
     // Save context
     if (setjmp(current_thread->env) == 0) {
         schedule();
         longjmp(env_st, 1);
     }
+
+    // Check for new coming task
+    while (task != current_thread->tasks) {
+        top_task_run();
+    }
+    current_thread->current_task = task;
 }
 void dispatch(void) {
     // TODO
     // Init
     if (!current_thread->buf_set) {
         current_thread->env->sp = (unsigned long)(current_thread->stack_p);
-        current_thread->env->ra = (unsigned long)(current_thread->fp);
+        current_thread->env->ra = (unsigned long)(&thread_run);
         current_thread->buf_set = 1;
     }
     longjmp(current_thread->env, 1);
@@ -95,4 +112,29 @@ void thread_start_threading(void) {
 // part 2
 void thread_assign_task(struct thread *t, void (*f)(void *), void *arg) {
     // TODO
+    struct task *task = task_create(t, f, arg);
+    task->next = t->tasks;
+    t->tasks = task;
+}
+
+void thread_run() {
+    while (current_thread->tasks) {
+        top_task_run();
+    }
+    thread_exit();
+}
+
+void top_task_run() {
+    // Run the top task
+    struct task *top_task = current_thread->tasks;
+    current_thread->current_task = top_task;
+    top_task->fp(top_task->arg);
+    // After running, remove the task.
+    // Current task must be the top one.
+    if (top_task != current_thread->tasks) {
+        printf("Assertion Failed\n");
+        exit(-1);
+    }
+    current_thread->tasks = top_task->next;
+    free(top_task);
 }

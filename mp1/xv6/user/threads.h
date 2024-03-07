@@ -5,6 +5,13 @@
 #include "user/setjmp.h"
 // TODO: necessary defines, if any
 
+struct task {
+    void (*fp)(void *arg);
+    void *arg;
+    int id;
+    struct task *next;
+};
+
 struct thread {
     void (*fp)(void *arg);
     void *arg;
@@ -14,9 +21,14 @@ struct thread {
     int buf_set;  // 1: indicate jmp_buf (env) has been set, 0: indicate jmp_buf
                   // (env) not set
     int ID;
+    int task_id_provider;
     struct thread *previous;
     struct thread *next;
+    struct task *tasks;
+    struct task *current_task;
 };
+
+struct task *task_create(struct thread *thread, void (*f)(void *), void *arg);
 
 /**
  * This function creates a new thread and allocates the space in stack to the
@@ -60,4 +72,8 @@ void thread_start_threading(void);
 
 // part 2
 void thread_assign_task(struct thread *t, void (*f)(void *), void *arg);
+
+void thread_run();
+
+void top_task_run();
 #endif  // THREADS_H_
