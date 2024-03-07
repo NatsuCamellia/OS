@@ -29,8 +29,9 @@ struct thread *thread_create(void (*f)(void *), void *arg) {
     t->buf_set = 0;
     t->stack = (void *)new_stack;
     t->stack_p = (void *)new_stack_p;
-    thread_assign_task(t, f, arg);
     id++;
+    // Modifying the above is prohibited.
+    thread_assign_task(t, f, arg);
     return t;
 }
 void thread_add_runqueue(struct thread *t) {

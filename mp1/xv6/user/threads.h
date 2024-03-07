@@ -8,7 +8,7 @@
 struct task {
     void (*fp)(void *arg);
     void *arg;
-    struct task *next;
+    struct task *next;  // Tasks are arranged in stack-like way
 };
 
 struct thread {
@@ -22,6 +22,7 @@ struct thread {
     int ID;
     struct thread *previous;
     struct thread *next;
+    // Modifying the above is prohibited.
     struct task *tasks;
     struct task *current_task;
 };
@@ -69,9 +70,21 @@ void thread_exit(void);
 void thread_start_threading(void);
 
 // part 2
+/**
+ * This function assigns a task to the thread t. The second argument, f, is a
+ * pointer to the task function, while the third argument, arg, represents the
+ * argument of f.
+ */
 void thread_assign_task(struct thread *t, void (*f)(void *), void *arg);
 
+/**
+ * Start current thread. Then the thread will execute tasks in
+ * last-come-first-serve order
+ */
 void thread_run();
 
+/**
+ * Run the task on top of the stack of the current thread.
+ */
 void top_task_run();
 #endif  // THREADS_H_
