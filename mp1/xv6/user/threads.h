@@ -8,7 +8,6 @@
 struct task {
     void (*fp)(void *arg);
     void *arg;
-    int id;
     struct task *next;
 };
 
@@ -21,7 +20,6 @@ struct thread {
     int buf_set;  // 1: indicate jmp_buf (env) has been set, 0: indicate jmp_buf
                   // (env) not set
     int ID;
-    int task_id_provider;
     struct thread *previous;
     struct thread *next;
     struct task *tasks;

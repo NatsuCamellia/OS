@@ -14,7 +14,6 @@ struct task *task_create(struct thread *thread, void (*f)(void *), void *arg) {
     struct task *t = (struct task *)malloc(sizeof(struct task));
     t->fp = f;
     t->arg = arg;
-    t->id = (thread->task_id_provider)++;
     return t;
 }
 
@@ -27,7 +26,6 @@ struct thread *thread_create(void (*f)(void *), void *arg) {
     t->fp = f;
     t->arg = arg;
     t->ID = id;
-    t->task_id_provider = 0;
     t->buf_set = 0;
     t->stack = (void *)new_stack;
     t->stack_p = (void *)new_stack_p;
@@ -63,8 +61,8 @@ void thread_yield(void) {
     // Check for new coming task
     while (task != current_thread->tasks) {
         top_task_run();
+        current_thread->current_task = task;
     }
-    current_thread->current_task = task;
 }
 void dispatch(void) {
     // TODO
