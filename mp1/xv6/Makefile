@@ -1,6 +1,6 @@
 K=kernel
 U=user
-STUDENT_ID=r12000000
+STUDENT_ID=b11902086
 
 OBJS = \
   $K/entry.o \
