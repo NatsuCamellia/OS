@@ -61,7 +61,12 @@ void thread_yield(void) {
 
     // Check for new coming task
     while (task != current_thread->tasks) {
-        top_task_run();
+        struct task *top_task = current_thread->tasks;
+        current_thread->current_task = top_task;
+        top_task->fp(top_task->arg);
+        // After running
+        current_thread->tasks = top_task->next;
+        free(top_task);
         current_thread->current_task = task;
     }
 }
@@ -118,22 +123,12 @@ void thread_assign_task(struct thread *t, void (*f)(void *), void *arg) {
 
 void thread_run() {
     while (current_thread->tasks) {
-        top_task_run();
+        struct task *top_task = current_thread->tasks;
+        current_thread->current_task = top_task;
+        top_task->fp(top_task->arg);
+        // After running
+        current_thread->tasks = top_task->next;
+        free(top_task);
     }
     thread_exit();
-}
-
-void top_task_run() {
-    // Run the top task
-    struct task *top_task = current_thread->tasks;
-    current_thread->current_task = top_task;
-    top_task->fp(top_task->arg);
-    // After running, remove the task.
-    // Current task must be the top one.
-    if (top_task != current_thread->tasks) {
-        printf("Assertion Failed\n");
-        exit(-1);
-    }
-    current_thread->tasks = top_task->next;
-    free(top_task);
 }
