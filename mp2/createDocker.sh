@@ -1,0 +1,1 @@
+docker create -it --name os_mp2 -v $(pwd)/xv6:/root ntuos/mp2
