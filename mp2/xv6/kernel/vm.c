@@ -541,9 +541,47 @@ void pgprint() {
 }
 #endif
 
+
+void printwalk(pagetable_t pagetable, uint64 va, int level, char *prefix) {
+  int last = 511;
+  while (!(*(pagetable + last) & PTE_V))
+    last--;
+  pte_t *pte;
+  for(int i = 0; i < 512; i++){
+    pte = pagetable + i;
+    if (*pte & PTE_V) {
+      prefix[(2 - level) * 4] = '\0'; /* Block the array */
+      printf("%s", prefix);
+      printf("+-- %d: pte=%p va=%p pa=%p", i, pte, va | ((uint64)i << PXSHIFT(level)), PTE2PA(*pte));
+      if (*pte & PTE_V)
+        printf(" V");
+      if (*pte & PTE_R)
+        printf(" R");
+      if (*pte & PTE_W)
+        printf(" W");
+      if (*pte & PTE_X)
+        printf(" X");
+      if (*pte & PTE_U)
+        printf(" U");
+      if (*pte & PTE_D)
+        printf(" D");
+      printf("\n");
+      
+      if ((*pte & (PTE_R|PTE_W|PTE_X)) == 0){
+        // this PTE points to a lower-level page table.
+        uint64 child = PTE2PA(*pte);
+        prefix[(2 - level) * 4] = (i < last) ? '|' : ' '; /* Add a bar if not end */
+        printwalk((pagetable_t)child, va + ((uint64)i << PXSHIFT(level)), level - 1, prefix);
+      }
+    }
+  }
+}
+
 /* NTU OS 2024 */
 /* Print multi layer page table. */
 void vmprint(pagetable_t pagetable) {
   /* TODO */
-  panic("not implemented yet\n");
+  printf("page table %p\n", pagetable);
+  char *prefix = "        ";
+  printwalk(pagetable, 0, 2, prefix);
 }
