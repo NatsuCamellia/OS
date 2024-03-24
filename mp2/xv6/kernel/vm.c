@@ -510,15 +510,16 @@ int madvise(uint64 base, uint64 len, int advice) {
     pte_t *pte;
     for (uint64 va = begin; va <= last; va += PGSIZE) {
       pte = walk(pgtbl, va, 0);
-      // printf("willneed: %p\n",pte);
       if (pte != 0 && (*pte & PTE_S)) {
         uint64 blockno = PTE2BLOCKNO(*pte);
         char *pa;
-        if ((pa = kalloc()) == 0)
-          panic("willneed: failed to kalloc pa\n");
+        if ((pa = kalloc()) == 0) {
+          end_op();
+          return -1;
+        }
         read_page_from_disk(ROOTDEV, pa, blockno);
+        mappages(pgtbl, va, PGSIZE, pa, (PTE_FLAGS(*pte) | PTE_V) & ~PTE_S);
         bfree_page(ROOTDEV, blockno);
-        *pte = (PA2PTE(pa) | PTE_FLAGS(*pte) | PTE_V) & ~PTE_S;
 
         /* Push into page buffer */
         #ifdef PG_REPLACEMENT_USE_LRU

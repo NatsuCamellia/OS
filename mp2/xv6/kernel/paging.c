@@ -29,9 +29,16 @@ int handle_pgfault() {
   uint64 va = r_stval();
   va = PGROUNDDOWN(va);
   struct proc *p = myproc();
-  pte_t *pte = walk(p->pagetable, va, 0); /* pte is cleared to 0 */
-  if ((*pte & PTE_S) && madvise(va, PGSIZE, MADV_WILLNEED) == 0) /* This page has been swapped out */
+  pte_t *pte = walk(p->pagetable, va, 1);
+  if (!(*pte & (PTE_V | PTE_S))) {
+    uint64 pa = kalloc();
+    memset(pa, 0, PGSIZE);
+    mappages(p->pagetable, va, PGSIZE, pa, (PTE_U | PTE_R | PTE_W | PTE_X));
     return 0;
-  else  /* Illegal memory access */
-    return -1; 
+  } else if ((*pte & PTE_S) && madvise(va, PGSIZE, MADV_WILLNEED) == 0) /* This page has been swapped out */
+    return 0;
+  else {
+    /* Error */
+    return -1;
+  }
 }
