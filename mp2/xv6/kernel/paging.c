@@ -29,12 +29,9 @@ int handle_pgfault() {
   uint64 va = r_stval();
   va = PGROUNDDOWN(va);
   struct proc *p = myproc();
-  pte_t *pte = walk(p->pagetable, va, 1);
-  if (*pte & PTE_S) {
-    madvise(va, PGSIZE, MADV_WILLNEED);
-  } else {
-    panic("handle_pgfault: not swapped\n");
-    return -1;
-  }
-  return 0;
+  pte_t *pte = walk(p->pagetable, va, 0); /* pte is cleared to 0 */
+  if ((*pte & PTE_S) && madvise(va, PGSIZE, MADV_WILLNEED) == 0) /* This page has been swapped out */
+    return 0;
+  else  /* Illegal memory access */
+    return -1; 
 }

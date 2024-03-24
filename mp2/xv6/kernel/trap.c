@@ -71,7 +71,8 @@ usertrap(void)
     syscall();
   } else if (scause == 13 || scause == 15) {
     // page fault
-    handle_pgfault();
+    if (handle_pgfault() == -1)
+      p->killed = 1;
   } else if ((which_dev = devintr()) != 0) {
     // ok
   } else {
