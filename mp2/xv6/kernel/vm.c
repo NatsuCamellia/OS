@@ -119,14 +119,16 @@ walk(pagetable_t pagetable, uint64 va, int alloc)
 
   pte_t *pte = &pagetable[PX(0, va)];
 
-// NTU OS 2024
-// pte is accessed, so determine how
-// it affects the page replacement buffer here
-#ifdef PG_REPLACEMENT_USE_LRU
-// TODO
-#elif defined(PG_REPLACEMENT_USE_FIFO)
-// TODO
-#endif
+  // NTU OS 2024
+  // pte is accessed, so determine how
+  // it affects the page replacement buffer here
+  #ifdef PG_REPLACEMENT_USE_LRU
+  // TODO
+  #elif defined(PG_REPLACEMENT_USE_FIFO)
+  // TODO
+  if ((*pte & (PTE_V | PTE_S)) == 0)
+    q_push(&queue, pte);
+  #endif
   return pte;
 }
 
@@ -182,14 +184,6 @@ mappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
     if(*pte & PTE_V)
       panic("mappages: remap");
     *pte = PA2PTE(pa) | perm | PTE_V;
-
-    #ifdef PG_REPLACEMENT_USE_LRU
-    // TODO
-    #elif defined(PG_REPLACEMENT_USE_FIFO)
-    // TODO
-    q_push(&queue, pte);
-    #endif
-
     if(a == last)
       break;
     a += PGSIZE;
