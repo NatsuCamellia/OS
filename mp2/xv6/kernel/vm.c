@@ -18,6 +18,7 @@
 // TODO
 #elif defined(PG_REPLACEMENT_USE_FIFO)
 // TODO
+queue_t queue;
 #endif
 
 /*
@@ -68,6 +69,13 @@ void
 kvminit(void)
 {
   kernel_pagetable = kvmmake();
+  printf("Initializing\n");
+  #ifdef PG_REPLACEMENT_USE_LRU
+  // TODO
+  #elif defined(PG_REPLACEMENT_USE_FIFO)
+  // TODO
+  q_init(&queue);
+  #endif
 }
 
 // Switch h/w page table register to the kernel's page table,
@@ -174,6 +182,14 @@ mappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
     if(*pte & PTE_V)
       panic("mappages: remap");
     *pte = PA2PTE(pa) | perm | PTE_V;
+
+    #ifdef PG_REPLACEMENT_USE_LRU
+    // TODO
+    #elif defined(PG_REPLACEMENT_USE_FIFO)
+    // TODO
+    q_push(&queue, pte);
+    #endif
+
     if(a == last)
       break;
     a += PGSIZE;
@@ -505,6 +521,14 @@ int madvise(uint64 base, uint64 len, int advice) {
         read_page_from_disk(ROOTDEV, pa, blockno);
         bfree_page(ROOTDEV, blockno);
         *pte = (PA2PTE(pa) | PTE_FLAGS(*pte) | PTE_V) & ~PTE_S;
+
+        /* Push into page buffer */
+        #ifdef PG_REPLACEMENT_USE_LRU
+        // TODO
+        #elif defined(PG_REPLACEMENT_USE_FIFO)
+        // TODO
+        q_push(&queue, pte);
+        #endif
       }
     }
 
@@ -524,6 +548,16 @@ int madvise(uint64 base, uint64 len, int advice) {
           return -1;
         }
         kfree(pa);
+
+        /* Remove from page buffer */
+        #ifdef PG_REPLACEMENT_USE_LRU
+        // TODO
+        #elif defined(PG_REPLACEMENT_USE_FIFO)
+        // TODO
+        int idx = q_find(&queue, pte);
+        if (idx != -1)
+          q_pop_idx(&queue, idx);
+        #endif
       }
     }
 
@@ -541,8 +575,22 @@ int madvise(uint64 base, uint64 len, int advice) {
 
   } else if(advice == MADV_PIN) {
     // TODO
+    pte_t *pte;
+    for (uint64 va = begin; va <= last; va += PGSIZE) {
+      pte = walk(pgtbl, va, 0);
+      if (pte != 0) {
+        *pte |= PTE_P;
+      }
+    }
   } else if(advice == MADV_UNPIN) {
     // TODO
+    pte_t *pte;
+    for (uint64 va = begin; va <= last; va += PGSIZE) {
+      pte = walk(pgtbl, va, 0);
+      if (pte != 0) {
+        *pte &= ~PTE_P;
+      }
+    }
   }
   else {
     return -1;
@@ -553,12 +601,16 @@ int madvise(uint64 base, uint64 len, int advice) {
 /* print pages from page replacement buffers */
 #if defined(PG_REPLACEMENT_USE_LRU) || defined(PG_REPLACEMENT_USE_FIFO)
 void pgprint() {
+  printf("Page replacement buffers\n");
+  printf("------Start------------\n");
   #ifdef PG_REPLACEMENT_USE_LRU
   // TODO
   #elif defined(PG_REPLACEMENT_USE_FIFO)
-  // TODO
+  for (int i = 0; i < queue.size; i++) {
+    printf("pte: %p\n", (pte_t*)(queue.bucket[i]));
+  }
   #endif
-  panic("not implemented yet\n");
+  printf("------End--------------\n");
 }
 #endif
 
