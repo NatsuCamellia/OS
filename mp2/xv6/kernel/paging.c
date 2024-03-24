@@ -5,6 +5,7 @@
 #include "spinlock.h"
 #include "defs.h"
 #include "proc.h"
+#include "vm.h"
 
 /* NTU OS 2024 */
 /* Allocate eight consecutive disk blocks. */
@@ -25,8 +26,15 @@ char *swap_page_from_pte(pte_t *pte) {
 /* Page fault handler */
 int handle_pgfault() {
   /* Find the address that caused the fault */
-  /* uint64 va = r_stval(); */
-
-  /* TODO */
-  panic("not implemented yet\n");
+  uint64 va = r_stval();
+  va = PGROUNDDOWN(va);
+  struct proc *p = myproc();
+  pte_t *pte = walk(p->pagetable, va, 1);
+  if (*pte & PTE_S) {
+    madvise(va, PGSIZE, MADV_WILLNEED);
+  } else {
+    panic("handle_pgfault: not swapped\n");
+    return -1;
+  }
+  return 0;
 }
