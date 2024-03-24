@@ -487,8 +487,29 @@ int madvise(uint64 base, uint64 len, int advice) {
 
   if (advice == MADV_NORMAL) {
     // TODO
+    return 0;
   } else if (advice == MADV_WILLNEED) {
     // TODO
+    /* Swap in */
+    begin_op();
+
+    pte_t *pte;
+    for (uint64 va = begin; va <= last; va += PGSIZE) {
+      pte = walk(pgtbl, va, 0);
+      // printf("willneed: %p\n",pte);
+      if (pte != 0 && (*pte & PTE_S)) {
+        uint64 blockno = PTE2BLOCKNO(*pte);
+        char *pa;
+        if ((pa = kalloc()) == 0)
+          panic("willneed: failed to kalloc pa\n");
+        read_page_from_disk(ROOTDEV, pa, blockno);
+        bfree_page(ROOTDEV, blockno);
+        *pte = (PA2PTE(pa) | PTE_FLAGS(*pte) | PTE_V) & ~PTE_S;
+      }
+    }
+
+    end_op();
+    return 0;
   } else if (advice == MADV_DONTNEED) {
     begin_op();
 
@@ -547,12 +568,17 @@ void printwalk(pagetable_t pagetable, uint64 va, int level, char *prefix) {
   while (!(*(pagetable + last) & PTE_V))
     last--;
   pte_t *pte;
+  uint64 pteva; /* VA of PTE */
   for(int i = 0; i < 512; i++){
     pte = pagetable + i;
-    if (*pte & PTE_V) {
+    if (*pte & (PTE_V | PTE_S)) {
       prefix[(2 - level) * 4] = '\0'; /* Block the array */
       printf("%s", prefix);
-      printf("+-- %d: pte=%p va=%p pa=%p", i, pte, va | ((uint64)i << PXSHIFT(level)), PTE2PA(*pte));
+      pteva = va | ((uint64)i << PXSHIFT(level));
+      if (*pte & PTE_V)
+        printf("+-- %d: pte=%p va=%p pa=%p", i, pte, pteva, PTE2PA(*pte));
+      else
+        printf("+-- %d: pte=%p va=%p blockno=%p", i, pte, pteva, PTE2BLOCKNO(*pte));
       if (*pte & PTE_V)
         printf(" V");
       if (*pte & PTE_R)
@@ -563,15 +589,19 @@ void printwalk(pagetable_t pagetable, uint64 va, int level, char *prefix) {
         printf(" X");
       if (*pte & PTE_U)
         printf(" U");
+      if (*pte & PTE_S)
+        printf(" S");
       if (*pte & PTE_D)
         printf(" D");
+      if (*pte & PTE_P)
+        printf(" P");
       printf("\n");
       
       if ((*pte & (PTE_R|PTE_W|PTE_X)) == 0){
         // this PTE points to a lower-level page table.
         uint64 child = PTE2PA(*pte);
         prefix[(2 - level) * 4] = (i < last) ? '|' : ' '; /* Add a bar if not end */
-        printwalk((pagetable_t)child, va + ((uint64)i << PXSHIFT(level)), level - 1, prefix);
+        printwalk((pagetable_t)child, pteva, level - 1, prefix);
       }
     }
   }
