@@ -16,9 +16,17 @@ int lru_push(lru_t *lru, uint64 e){
 	int idx = lru_find(lru, e);
 	if (idx != -1)
 		lru_pop(lru, idx);
-	if (lru_full(lru)) 
-		lru_pop(lru, 0);
-	lru->bucket[lru->size++] = e;
+	if (!lru_full(lru)) {
+		lru->bucket[lru->size++] = e;
+		return 0;
+	}
+	for (int i = lru->size - 1; i >= 0; i--) {
+		if (*(pte_t*)(lru->bucket[i]) & PTE_P) /* Pinned */
+			continue;
+		uint64 tmp = lru->bucket[i];
+		lru->bucket[i] = e;
+		e = tmp;
+	}
 }
 
 uint64 lru_pop(lru_t *lru, int idx){
