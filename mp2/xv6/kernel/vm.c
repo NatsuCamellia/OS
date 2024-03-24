@@ -16,6 +16,7 @@
 // or other files
 #ifdef PG_REPLACEMENT_USE_LRU
 // TODO
+lru_t pgbuf;
 #elif defined(PG_REPLACEMENT_USE_FIFO)
 // TODO
 queue_t queue;
@@ -69,9 +70,9 @@ void
 kvminit(void)
 {
   kernel_pagetable = kvmmake();
-  printf("Initializing\n");
   #ifdef PG_REPLACEMENT_USE_LRU
   // TODO
+  lru_init(&pgbuf);
   #elif defined(PG_REPLACEMENT_USE_FIFO)
   // TODO
   q_init(&queue);
@@ -122,8 +123,11 @@ walk(pagetable_t pagetable, uint64 va, int alloc)
   // NTU OS 2024
   // pte is accessed, so determine how
   // it affects the page replacement buffer here
+  if (va < 0x0000000000003000) /* Ignore first three pages */
+    return pte;
   #ifdef PG_REPLACEMENT_USE_LRU
   // TODO
+  lru_push(&pgbuf, pte);
   #elif defined(PG_REPLACEMENT_USE_FIFO)
   // TODO
   if ((*pte & (PTE_V | PTE_S)) == 0)
@@ -519,6 +523,7 @@ int madvise(uint64 base, uint64 len, int advice) {
         /* Push into page buffer */
         #ifdef PG_REPLACEMENT_USE_LRU
         // TODO
+        lru_push(&pgbuf, pte);
         #elif defined(PG_REPLACEMENT_USE_FIFO)
         // TODO
         q_push(&queue, pte);
@@ -546,6 +551,9 @@ int madvise(uint64 base, uint64 len, int advice) {
         /* Remove from page buffer */
         #ifdef PG_REPLACEMENT_USE_LRU
         // TODO
+        int idx = lru_find(&pgbuf, pte);
+        if (idx != -1)
+          lru_pop(&pgbuf, idx);
         #elif defined(PG_REPLACEMENT_USE_FIFO)
         // TODO
         int idx = q_find(&queue, pte);
@@ -599,6 +607,9 @@ void pgprint() {
   printf("------Start------------\n");
   #ifdef PG_REPLACEMENT_USE_LRU
   // TODO
+  for (int i = 0; i < pgbuf.size; i++) {
+    printf("pte: %p\n", (pte_t*)(pgbuf.bucket[i]));
+  }
   #elif defined(PG_REPLACEMENT_USE_FIFO)
   for (int i = 0; i < queue.size; i++) {
     printf("pte: %p\n", (pte_t*)(queue.bucket[i]));
