@@ -13,7 +13,7 @@ void q_init(queue_t *q){
 }
 
 int q_push(queue_t *q, uint64 e){
-	if (q_full(q) == 0) {
+	if (!q_full(q)) {
 		q->bucket[q->size++] = e;
 		return 0;
 	}
@@ -30,9 +30,8 @@ uint64 q_pop_idx(queue_t *q, int idx){
 	if (idx < 0 || idx >= q->size)
 		panic("q_pop_idx: idx");
 	uint64 e = q->bucket[idx];
-	for (int i = idx + 1; i < q->size; i++) {
+	for (int i = idx + 1; i < q->size; i++)
 		q->bucket[i - 1] = q->bucket[i];
-	}
 	q->size--;
 	return e;
 }
