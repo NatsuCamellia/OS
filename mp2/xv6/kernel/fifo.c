@@ -13,16 +13,22 @@ void q_init(queue_t *q){
 }
 
 int q_push(queue_t *q, uint64 e){
+	if (q_find(q, e) != -1) /* Already exists */
+		return 0;
 	if (!q_full(q)) {
 		q->bucket[q->size++] = e;
 		return 0;
 	}
-	for (int i = q->size - 1; i >= 0; i--) {
-		if (*(pte_t*)(q->bucket[i]) & PTE_P) /* Pinned */
-			continue;
-		uint64 tmp = q->bucket[i];
-		q->bucket[i] = e;
-		e = tmp;
+	/* Find first unpinned victim */
+	for (int i = 0; i < q->size - 1; i++) {
+		if (!(*(pte_t*)(q->bucket[i]) & PTE_P)) {
+			/* Not pinned */
+			q_pop_idx(q, i);
+			break;
+		} 
+	}
+	if (!q_full(q)) {
+		q->bucket[q->size++] = e;
 	}
 }
 

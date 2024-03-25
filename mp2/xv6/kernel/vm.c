@@ -130,7 +130,7 @@ walk(pagetable_t pagetable, uint64 va, int alloc)
   lru_push(&pgbuf, pte);
   #elif defined(PG_REPLACEMENT_USE_FIFO)
   // TODO
-  if ((*pte & (PTE_V | PTE_S)) == 0)
+  if (q_find(&queue, pte) == -1)
     q_push(&queue, pte);
   #endif
   return pte;
@@ -520,15 +520,6 @@ int madvise(uint64 base, uint64 len, int advice) {
         read_page_from_disk(ROOTDEV, pa, blockno);
         mappages(pgtbl, va, PGSIZE, pa, (PTE_FLAGS(*pte) | PTE_V) & ~PTE_S);
         bfree_page(ROOTDEV, blockno);
-
-        /* Push into page buffer */
-        #ifdef PG_REPLACEMENT_USE_LRU
-        // TODO
-        lru_push(&pgbuf, pte);
-        #elif defined(PG_REPLACEMENT_USE_FIFO)
-        // TODO
-        q_push(&queue, pte);
-        #endif
       }
     }
 
@@ -647,12 +638,14 @@ void printwalk(pagetable_t pagetable, uint64 va, int level, char *prefix) {
         printf(" X");
       if (*pte & PTE_U)
         printf(" U");
+      if (!(*pte & PTE_S)) { /* Not swapped */
+        if (*pte & PTE_D)
+          printf(" D");
+        if (*pte & PTE_P)
+          printf(" P");
+      }
       if (*pte & PTE_S)
         printf(" S");
-      if (*pte & PTE_D)
-        printf(" D");
-      if (*pte & PTE_P)
-        printf(" P");
       printf("\n");
       
       if ((*pte & (PTE_R|PTE_W|PTE_X)) == 0){

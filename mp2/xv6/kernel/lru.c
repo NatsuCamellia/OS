@@ -20,13 +20,16 @@ int lru_push(lru_t *lru, uint64 e){
 		lru->bucket[lru->size++] = e;
 		return 0;
 	}
-	for (int i = lru->size - 1; i >= 0; i--) {
-		if (*(pte_t*)(lru->bucket[i]) & PTE_P) /* Pinned */
-			continue;
-		uint64 tmp = lru->bucket[i];
-		lru->bucket[i] = e;
-		e = tmp;
+	/* Find first unpinned victim */
+	for (int i = 0; i < lru->size - 1; i++) {
+		if (!(*(pte_t*)(lru->bucket[i]) & PTE_P)) {
+			/* Not pinned */
+			lru_pop(lru, i);
+			break;
+		}
 	}
+	if (!lru_full(lru))
+		lru->bucket[lru->size++] = e;
 }
 
 uint64 lru_pop(lru_t *lru, int idx){
