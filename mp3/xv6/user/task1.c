@@ -22,6 +22,4 @@ int main(int argc, char **argv)
     thread_start_threading();
     printf("\nexited\n");
     exit(0);
-
-    
 }

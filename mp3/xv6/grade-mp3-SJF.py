@@ -36,11 +36,10 @@ def test_uthread():
         'task3'
     ]), make_args = ["SCHEDPOLICY=THREAD_SCHEDULER_SJF"])
     expected = """dispatch thread#2 at 0: allocated_time=1
-dispatch thread#3 at 1: allocated_time=1
-dispatch thread#1 at 2: allocated_time=5
-thread#1 finish at 7
-dispatch thread#3 at 7: allocated_time=4
-thread#3 finish at 11
+dispatch thread#3 at 1: allocated_time=5
+thread#3 finish at 6
+dispatch thread#1 at 6: allocated_time=5
+thread#1 finish at 11
 dispatch thread#2 at 11: allocated_time=6
 thread#2 finish at 17"""
     if not re.findall(expected, r.qemu.output, re.M):

@@ -40,7 +40,7 @@ struct thread *thread_create(void (*f)(void *), void *arg, int is_real_time, int
     t->n = n;
     t->is_real_time = is_real_time;
     t->weight = 1;
-    t->remaining_time = 0;
+    t->remaining_time = processing_time;
     t->current_deadline = 0;
     return t;
 }
@@ -55,7 +55,10 @@ void thread_add_at(struct thread *t, int arrival_time)
     struct release_queue_entry *new_entry = (struct release_queue_entry *)malloc(sizeof(struct release_queue_entry));
     new_entry->thrd = t;
     new_entry->release_time = arrival_time;
-    t->current_deadline = arrival_time;
+    if (t->is_real_time) {
+        t->current_deadline = arrival_time;
+        t->current_deadline = arrival_time + t->deadline;
+    }
     list_add_tail(&new_entry->thread_list, &release_queue);
 }
 
