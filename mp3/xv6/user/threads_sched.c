@@ -58,10 +58,33 @@ struct threads_sched_result schedule_wrr(struct threads_sched_args args)
 /* Shortest-Job-First Scheduling */
 struct threads_sched_result schedule_sjf(struct threads_sched_args args)
 {
+    struct thread *thread = NULL;
+    struct thread *th = NULL;
+    list_for_each_entry(th, args.run_queue, thread_list) {
+        if (thread == NULL || th->remaining_time < thread->remaining_time
+            || (th->remaining_time == thread->remaining_time && th->ID < thread->ID))
+            thread = th;
+    }
+
+    int time = thread->remaining_time;
+    struct release_queue_entry *entry = NULL;
+    list_for_each_entry(entry, args.release_queue, thread_list) {
+        if (entry->release_time - args.current_time >= time)
+            continue;
+        int est_remain = thread->remaining_time - (entry->release_time - args.current_time);
+        if (entry->thrd->processing_time < est_remain ||
+            (entry->thrd->processing_time == est_remain && entry->thrd->ID < thread->ID))
+            time = entry->release_time - args.current_time;
+    }
+
     struct threads_sched_result r;
-    // TODO: implement the shortest-job-first scheduling algorithm
-    r.scheduled_thread_list_member = args.run_queue;
-    r.allocated_time = 1;
+    if (thread != NULL) {
+        r.scheduled_thread_list_member = &thread->thread_list;
+        r.allocated_time = time;
+    } else {
+        r.scheduled_thread_list_member = args.run_queue;
+        r.allocated_time = 1;
+    }
     return r;
 }
 
