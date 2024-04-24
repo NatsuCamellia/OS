@@ -32,8 +32,25 @@ struct threads_sched_result schedule_default(struct threads_sched_args args)
 /* Weighted-Round-Robin Scheduling */
 struct threads_sched_result schedule_wrr(struct threads_sched_args args)
 {
+    struct thread *thread = NULL;
+    struct thread *th = NULL;
+    list_for_each_entry(th, args.run_queue, thread_list) {
+        // Choose the first thread in queue
+        thread = th;
+        break;
+    }
+    // Rotate the queue
+    args.run_queue = args.run_queue->next;
+
     struct threads_sched_result r;
-    // TODO: implement the weighted round-robin scheduling algorithm
+    if (thread != NULL) {
+        r.scheduled_thread_list_member = &thread->thread_list;
+        int time = thread->weight * args.time_quantum;
+        r.allocated_time = (time > thread->remaining_time) ? thread->remaining_time : time;
+    } else {
+        r.scheduled_thread_list_member = args.run_queue;
+        r.allocated_time = 1;
+    }
 
     return r;
 }
@@ -43,7 +60,8 @@ struct threads_sched_result schedule_sjf(struct threads_sched_args args)
 {
     struct threads_sched_result r;
     // TODO: implement the shortest-job-first scheduling algorithm
-
+    r.scheduled_thread_list_member = args.run_queue;
+    r.allocated_time = 1;
     return r;
 }
 
@@ -53,6 +71,8 @@ struct threads_sched_result schedule_lst(struct threads_sched_args args)
 {
     struct threads_sched_result r;
     // TODO: implement the least-slack-time scheduling algorithm
+    r.scheduled_thread_list_member = args.run_queue;
+    r.allocated_time = 1;
 
     return r;
 }
@@ -62,6 +82,8 @@ struct threads_sched_result schedule_dm(struct threads_sched_args args)
 {
     struct threads_sched_result r;
     // TODO: implement the deadline-monotonic scheduling algorithm
+    r.scheduled_thread_list_member = args.run_queue;
+    r.allocated_time = 1;
 
     return r;
 }
