@@ -1,0 +1,1 @@
+docker create -it --name os_mp3 -v $(pwd)/xv6:/home/xv6/ -w /home/xv6/ ntuos/mp3
