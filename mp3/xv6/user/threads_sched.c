@@ -6,6 +6,21 @@
 
 #define NULL 0
 
+/* helper functions */
+int get_next_release_time(struct threads_sched_args args) {
+    int next_release_time = __INT32_MAX__;
+    struct release_queue_entry *entry = NULL;
+    list_for_each_entry(entry, args.release_queue, thread_list) {
+        if (entry->release_time < next_release_time)
+            next_release_time = entry->release_time;
+    }
+    return next_release_time;
+}
+
+int min(int a, int b) {
+    return a < b ? a : b;
+}
+
 /* default scheduling algorithm */
 struct threads_sched_result schedule_default(struct threads_sched_args args)
 {
@@ -153,13 +168,60 @@ struct threads_sched_result schedule_lst(struct threads_sched_args args)
     return r;
 }
 
+int missedDeadline(struct thread *t, int time) {
+    return t->current_deadline <= time;
+}
+
+/* Returns positive integer iff `a` has higher priority than `b` */
+int dmcmp(struct thread *a, struct thread *b, int current_time) {
+    if (missedDeadline(a, current_time) && missedDeadline(b, current_time))
+        return b->ID - a->ID;
+    if (missedDeadline(a, current_time))
+        return 1;
+    if (missedDeadline(b, current_time)) 
+        return -1;
+    
+    if (a->deadline < b->deadline)
+        return 1;
+    if (a->deadline > b->deadline)
+        return -1;
+    return b->ID - a->ID;
+}
+
 /* Deadline-Monotonic Scheduling */
 struct threads_sched_result schedule_dm(struct threads_sched_args args)
 {
     struct threads_sched_result r;
-    // TODO: implement the deadline-monotonic scheduling algorithm
-    r.scheduled_thread_list_member = args.run_queue;
-    r.allocated_time = 1;
+    struct thread *thread = NULL;
+    struct thread *th = NULL;
+    list_for_each_entry(th, args.run_queue, thread_list) {
+        if (thread == NULL || dmcmp(thread, th, args.current_time) < 0)
+            thread = th;
+    }
 
+    // Queue is empty
+    if (thread == NULL) {
+        r.scheduled_thread_list_member = args.run_queue;
+        r.allocated_time = get_next_release_time(args) - args.current_time;
+        return r;
+    }
+
+    if (missedDeadline(thread, args.current_time)) {
+        r.scheduled_thread_list_member = &thread->thread_list;
+        r.allocated_time = 0;
+        return r;
+    }
+
+    int time = min(thread->remaining_time, thread->current_deadline - args.current_time);
+    struct release_queue_entry *entry = NULL;
+    list_for_each_entry(entry, args.release_queue, thread_list) {
+        if (entry->release_time - args.current_time >= time)
+            continue;
+        if (dmcmp(entry->thrd, thread, entry->release_time) > 0)
+            time = entry->release_time - args.current_time;
+    }
+
+    r.scheduled_thread_list_member = &thread->thread_list;
+    r.allocated_time = time;
     return r;
 }
