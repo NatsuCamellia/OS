@@ -46,10 +46,11 @@ def test_uthread():
         'rttask3'
     ]), make_args = ["SCHEDPOLICY=THREAD_SCHEDULER_LST"])
     expected = """dispatch thread#2 at 0: allocated_time=1
-dispatch thread#3 at 1: allocated_time=3
-thread#3 finish one cycle at 4: 1 cycles left
-dispatch thread#1 at 4: allocated_time=3
-thread#1 finish one cycle at 7: 1 cycles left
+dispatch thread#3 at 1: allocated_time=1
+dispatch thread#1 at 2: allocated_time=3
+thread#1 finish one cycle at 5: 1 cycles left
+dispatch thread#3 at 5: allocated_time=2
+thread#3 finish one cycle at 7: 1 cycles left
 dispatch thread#2 at 7: allocated_time=4
 thread#2 finish one cycle at 11: 1 cycles left
 dispatch thread#3 at 11: allocated_time=3
