@@ -84,7 +84,6 @@ struct threads_sched_result schedule_wrr(struct threads_sched_args args)
     struct thread *th = NULL;
     list_for_each_entry(th, args.run_queue, thread_list) {
         thread = th;
-        args.run_queue = args.run_queue->next;
         break;
     }
 
@@ -94,6 +93,7 @@ struct threads_sched_result schedule_wrr(struct threads_sched_args args)
         return r;
     }
 
+    args.run_queue = args.run_queue->next;
     r.scheduled_thread_list_member = &thread->thread_list;
     r.allocated_time = min(thread->weight * args.time_quantum, thread->remaining_time);
     return r;
