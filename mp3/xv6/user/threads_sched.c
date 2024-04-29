@@ -12,6 +12,10 @@ int min(int a, int b) {
     return a < b ? a : b;
 }
 
+int max(int a, int b) {
+    return a > b ? a : b;
+}
+
 int get_next_release_time(struct threads_sched_args args) {
     int next_release_time = __INT32_MAX__;
     struct release_queue_entry *entry = NULL;
@@ -53,6 +57,10 @@ int get_allocated_time(struct thread *thread, struct threads_sched_args args, in
     return time;
 }
 
+int missedDeadline(struct thread *t, int time) {
+    return t->current_deadline <= time;
+}
+
 /* default scheduling algorithm */
 struct threads_sched_result schedule_default(struct threads_sched_args args)
 {
@@ -89,7 +97,7 @@ struct threads_sched_result schedule_wrr(struct threads_sched_args args)
 
     if (thread == NULL) {
         r.scheduled_thread_list_member = args.run_queue;
-        r.allocated_time = get_next_release_time(args);
+        r.allocated_time = get_next_release_time(args) - args.current_time;
         return r;
     }
 
@@ -117,7 +125,7 @@ struct threads_sched_result schedule_sjf(struct threads_sched_args args)
 
     if (thread == NULL) {
         r.scheduled_thread_list_member = args.run_queue;
-        r.allocated_time = get_next_release_time(args);
+        r.allocated_time = get_next_release_time(args) - args.current_time;
         return r;
     }
 
@@ -129,7 +137,10 @@ struct threads_sched_result schedule_sjf(struct threads_sched_args args)
 /* ========== Least-Slack-Time ========== */
 
 int get_slack_time(struct thread *t, int time) {
-    return t->current_deadline - time - t->remaining_time;
+    if (t->remaining_time == 0) // In release queue
+        return t->current_deadline - time - t->processing_time;
+    else
+        return t->current_deadline - time - t->remaining_time;
 }
 
 int lstcmp(struct thread *a, struct thread *b, int time) {
@@ -154,9 +165,9 @@ struct threads_sched_result schedule_lst(struct threads_sched_args args)
         return r;
     }
 
-    if (get_slack_time(thread, args.current_time) <= 0) {
+    if (missedDeadline(thread, args.current_time)) {
         r.scheduled_thread_list_member = &thread->thread_list;
-        r.allocated_time = thread->current_deadline - args.current_time;
+        r.allocated_time = 0;
         return r;
     }
 
@@ -167,10 +178,6 @@ struct threads_sched_result schedule_lst(struct threads_sched_args args)
 
 
 /* ========== Deadline-Monotonic ========== */
-
-int missedDeadline(struct thread *t, int time) {
-    return t->current_deadline <= time;
-}
 
 int dmcmp(struct thread *a, struct thread *b, int current_time) {
     if (missedDeadline(a, current_time) && missedDeadline(b, current_time))
