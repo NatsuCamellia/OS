@@ -303,6 +303,21 @@ sys_open(void)
 
   begin_op();
 
+  while ((ip = namei(path)) != 0 && !(omode & O_NOFOLLOW)) {
+    ilock(ip);
+    if (ip->type != T_SYMLINK) {
+      iunlock(ip);
+      break;
+    }
+    if((n = readi(ip, 0, (uint64)path, 0, MAXPATH)) < 0) {
+      iunlock(ip);
+      end_op();
+      return -1;
+    }
+    iunlock(ip);
+    path[n] = 0;
+  }
+
   if(omode & O_CREATE){
     ip = create(path, T_FILE, 0, 0);
     if(ip == 0){
@@ -496,13 +511,35 @@ sys_symlink(void)
 {
   // TODO: symbolic link
   // You should implement this symlink system call.
-  // char target[MAXPATH], path[MAXPATH];
-  // struct inode *ip;
+  char target[MAXPATH], path[MAXPATH];
+  struct inode *ip;
 
-  // if(argstr(0, target, MAXPATH) < 0 || argstr(1, path, MAXPATH) < 0)
-  //   return -1;
-  
-  panic("You should implement symlink system call.");
+  if(argstr(0, target, MAXPATH) < 0 || argstr(1, path, MAXPATH) < 0)
+    return -1;
+
+  begin_op();
+  if((ip = namei(path)) != 0){
+    // already exists
+    end_op();
+    return -1;
+  }
+
+  if((ip = create(path, T_SYMLINK, 0, 0)) == 0){
+    // fail to create symlink
+    end_op();
+    return -1;
+  }
+
+  // write target to inode
+  int n = strlen(target);
+  if(writei(ip, 0, (uint64)target, 0, n) != n){
+    iunlockput(ip);
+    end_op();
+    return -1;
+  }
+  iunlockput(ip);
+
+  end_op();
 
   return 0;
 }
