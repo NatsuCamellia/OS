@@ -26,9 +26,13 @@ struct superblock {
 
 // TODO: bigfile
 // You may need to modify these.
+#define DIRECTCNT 6
+#define INDIRECTCNT 6
+#define DINDIRECTCNT 1
+
 #define NDIRECT 12
 #define NINDIRECT (BSIZE / sizeof(uint))
-#define MAXFILE (NDIRECT + NINDIRECT)
+#define MAXFILE (DIRECTCNT + NINDIRECT*INDIRECTCNT + NINDIRECT*NINDIRECT*DINDIRECTCNT)
 
 // On-disk inode structure
 
