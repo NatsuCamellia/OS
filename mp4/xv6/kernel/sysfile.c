@@ -544,29 +544,90 @@ sys_symlink(void)
   return 0;
 }
 
+void joinpath(char *dst, char *path1, char *path2) {
+  
+  int len1 = strlen(path1);
+  int len2 = strlen(path2);
+  strncpy(dst, path1, len1);
+  if (dst[len1 - 1] != '/')
+    dst[len1++] = '/';
+  strncpy(dst + len1, path2, len2);
+  dst[len1 + len2] = '\0';
+}
+
+uint64
+revreadlink(char target[MAXPATH], char *buf, int bufsize, char *path) {
+  struct inode *dp = namei(path);
+  int n = 0;
+  int m;
+  struct dirent de;
+  struct inode *ip;
+  char link_target[MAXPATH];
+
+  // Traverse directory
+  for(uint off = 0; off < dp->size; off += sizeof(struct dirent)){
+    if(readi(dp, 0, (uint64)&de, off, sizeof(de)) != sizeof(de))
+      panic("revreadlink: readi");
+    if(de.inum == 0)
+      continue;
+
+    ip = iget(dp->dev, de.inum);
+    ilock(ip);
+    if(ip->type == T_SYMLINK){
+      // read target from inode
+      if((m = readi(ip, 0, (uint64)link_target, 0, MAXPATH)) < 0)
+        panic("revreadlink: readi");
+      link_target[m] = 0;
+
+      if(namecmp(target, link_target) == 0){
+        char filepath[MAXPATH];
+        joinpath(filepath, path, de.name);
+        if(strncpy(buf + n, filepath, strlen(filepath)) < 0)
+          panic("revreadlink: copyout");
+        n += strlen(filepath);
+        buf[n++] = ' ';
+      }
+      iunlockput(ip);
+    } else if (ip->type == T_DIR){
+      iunlockput(ip);
+      char newpath[MAXPATH];
+      joinpath(newpath, path, de.name);
+
+      if (!namecmp(de.name, ".") == 0 && !namecmp(de.name, "..") == 0) {
+        n += revreadlink(target, buf + n, bufsize, newpath);
+      }
+    } else {
+      iunlockput(ip);
+    }
+  }
+  return n;
+}
+
 uint64
 sys_revreadlink(void) 
 {
   // TODO: Find all symbolic links that point to 'target'
-  // char target[MAXPATH];
-  // uint64 bufaddr;
-  // int bufsize;
+  char target[MAXPATH];
+  uint64 bufaddr;
+  int bufsize;
 
-  // if(argstr(0, target, MAXPATH) < 0 || argaddr(1, &bufaddr) < 0 || argint(2, &bufsize) < 0)
-  //   return -1;
+  if(argstr(0, target, MAXPATH) < 0 || argaddr(1, &bufaddr) < 0 || argint(2, &bufsize) < 0)
+    return -1;
 
-  // char userbuf[bufsize];
-  // memset(userbuf, 0, sizeof(userbuf));
+  char userbuf[bufsize];
+  memset(userbuf, 0, sizeof(userbuf));
 
   // implement the code
-
+  begin_op();
+  int n = revreadlink(target, userbuf, bufsize, "/");
+  if (n > 0)
+    userbuf[--n] = '\0';
+  printf("userbuf: %s.\n", userbuf);
   // Copy the result from kernel to user space, userbuf should store all symbolic links that point to 'target'
-  // if(copyout(myproc()->pagetable, bufaddr, userbuf, strlen(userbuf)) < 0)
-  //   return -1;
+  if(copyout(myproc()->pagetable, bufaddr, userbuf, n) < 0)
+    return -1;
+  end_op();
 
   // Return the number of bytes written to user buffer
-    
-  panic("sys_revreadlink is not implemented yet");
-
-  return -1;
+  return n;
 }
