@@ -303,7 +303,14 @@ sys_open(void)
 
   begin_op();
 
+  int lnkcnt = 0;
   while ((ip = namei(path)) != 0 && !(omode & O_NOFOLLOW)) {
+    if (lnkcnt >= 20) {
+      // treat as loop
+      printf("open: too many links.\n");
+      end_op();
+      return -1;
+    }
     ilock(ip);
     if (ip->type != T_SYMLINK) {
       iunlock(ip);
@@ -316,7 +323,10 @@ sys_open(void)
     }
     iunlock(ip);
     path[n] = 0;
+    lnkcnt++;
   }
+
+  
 
   if(omode & O_CREATE){
     ip = create(path, T_FILE, 0, 0);
