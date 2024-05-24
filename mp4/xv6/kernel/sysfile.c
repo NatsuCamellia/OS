@@ -307,7 +307,6 @@ sys_open(void)
   while ((ip = namei(path)) != 0 && !(omode & O_NOFOLLOW)) {
     if (lnkcnt >= 20) {
       // treat as loop
-      printf("open: too many links.\n");
       end_op();
       return -1;
     }
@@ -632,7 +631,6 @@ sys_revreadlink(void)
   int n = revreadlink(target, userbuf, bufsize, "/");
   if (n > 0)
     userbuf[--n] = '\0';
-  printf("userbuf: %s.\n", userbuf);
   // Copy the result from kernel to user space, userbuf should store all symbolic links that point to 'target'
   if(copyout(myproc()->pagetable, bufaddr, userbuf, n) < 0)
     return -1;
